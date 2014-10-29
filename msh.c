@@ -57,7 +57,7 @@ void processline (char *line)
 		printf("Error.\n");
 		return;
 	}
-
+	
 	if ((argc = argparse(expanded_line, &argv)) < 0) {
 		printf("Error.\n");
 		return;

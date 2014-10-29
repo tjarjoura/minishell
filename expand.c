@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include "proto.h"
 
 int expand(char *old, char *new, int newsize)
 {
-	int old_idx, new_idx, env_idx, dollar, in_env, n;
-	char env_buffer[MAX_ENV], *env_val;
+	int old_idx, new_idx, env_idx, dollar, in_env, n, i;
+	pid_t pid;
+	char env_buffer[MAX_ENV], pid_buffer[20], *env_val;
 
 	new_idx = dollar = in_env = 0;
 	for (old_idx = 0; old[old_idx] != '\0'; old_idx++) {
@@ -16,7 +19,6 @@ int expand(char *old, char *new, int newsize)
 				env_buffer[env_idx] = '\0';
 				env_val = getenv(env_buffer);
 				if (env_val != NULL) {
-					printf("env_val contains the string: %s\n", env_val);
 					n = strlen(env_val);
 					if ((n + new_idx) >= newsize)
 						return -1;
@@ -42,7 +44,13 @@ int expand(char *old, char *new, int newsize)
 					env_idx = 0;
 					dollar = 0;
 				}
-				
+
+				else if (old[old_idx] == '$') {
+					pid = getpid();
+					snprintf(pid_buffer, 20, "%d", pid);
+					for (i = 0; pid_buffer[i] != '\0'; i++)
+						new[new_idx++] = pid_buffer[i];
+				}					
 				else {
 					dollar = (old[old_idx] == '$');
 					new[new_idx++] = '$';
