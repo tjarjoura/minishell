@@ -14,15 +14,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-
-/* Constants */ 
-
-#define LINELEN 1024
-
-/* Prototypes */
-
-void processline (char *line);
-char **argparse(char *line, int *sz);
+#include "proto.h"
 
 /* Shell main */
 
@@ -57,9 +49,24 @@ int main (void)
 void processline (char *line)
 {
 	pid_t  cpid;
-	int    status;
-	int    sz;
-	char **argv = argparse(line, &sz);
+	int    status, builtin;
+	char **argv = NULL;
+	int argc = argparse(line, &argv);
+
+	if (argc == -1) {
+		printf("Error.\n");
+		return;
+	}
+	
+	else if (argc == 0)
+		return;
+
+	/* check if it's builtin */
+	builtin = get_builtin(argv[0]);
+	if (builtin >= 0) {
+		run_builtin(builtin, argc, argv);	
+		return;
+	}
 
 	/* Start a new process to do the job. */
 	cpid = fork();
@@ -71,7 +78,7 @@ void processline (char *line)
 	/* Check for who we are! */
 	if (cpid == 0) {
 		/* We are the child! */
-		execvp (line, argv);
+		execvp (argv[0], argv);
 		perror ("exec");
 		exit (127);
 	}
@@ -81,52 +88,4 @@ void processline (char *line)
 	/* Have the parent wait for child to complete */
 	if (wait (&status) < 0)
 		perror ("wait");
-}
-
-char **argparse(char *line, int *sz)
-{
-	int i, j, wc, in_arg; 
-	char delimiter = ' ';
-	char **argv, c;
-
-	in_arg = wc = i = 0;
-
-	/* get wc and fill in spaces with null bytes */
-	while ((c = line[i]) != '\0') {
-		if (c == delimiter && in_arg) {
-			line[i] = '\0';
-			in_arg = 0;
-		}
-
-		else if (c != delimiter && !in_arg) {
-			wc++;
-			in_arg = 1;
-		}	
-
-		i++;
-	}
-	
-	if (wc)
-		argv = malloc(sizeof(char *) * (wc + 1));
-	else
-		argv = NULL;
-
-	i = j = 0;
-
-	for (j = 0; j < wc; j++) {
-		/* skip initial whitespace */
-		while (line[i] == delimiter) 
-			i++;
-
-		argv[j] = (line + i);
-		
-		/* skip past terminating null byte */
-		while (line[i] != '\0')
-			i++;
-		i++;
-	}
-
-	(*sz) = wc;
-	argv[wc] = NULL;
-	return argv;
 }
