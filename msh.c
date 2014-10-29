@@ -26,7 +26,7 @@ int main (void)
 	while (1) {
 
 		/* prompt and get line */
-		fprintf (stderr, "%% ");
+		fprintf (stdout, "%% ");
 		if (fgets (buffer, LINELEN, stdin) == NULL)
 			break;
 
@@ -48,23 +48,29 @@ int main (void)
 
 void processline (char *line)
 {
-	pid_t  cpid;
-	int    status, builtin;
+	pid_t cpid;
+	int status, argc, rv;
 	char **argv = NULL;
-	int argc = argparse(line, &argv);
+	char expanded_line[LINELEN];
 
-	if (argc == -1) {
+	if (expand(line, expanded_line, LINELEN) < 0) {
+		printf("Error.\n");
+		return;
+	}
+
+	if ((argc = argparse(expanded_line, &argv)) < 0) {
 		printf("Error.\n");
 		return;
 	}
 	
-	else if (argc == 0)
+	if (argc == 0)
 		return;
 
 	/* check if it's builtin */
-	builtin = get_builtin(argv[0]);
-	if (builtin >= 0) {
-		run_builtin(builtin, argc, argv);	
+	rv = builtin(argv[0], argc, argv);
+	if (rv >= 0) {
+		if (argv)
+			free(argv);
 		return;
 	}
 
