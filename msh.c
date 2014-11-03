@@ -18,16 +18,39 @@
 
 /* Shell main */
 
-int main (void)
+int cmdline_shift;
+int cmdline_argc;
+char **cmdline_argv;
+
+int main (int argc, char **argv)
 {
-	char   buffer [LINELEN];
-	int    len;
+	char buffer [LINELEN];
+	int len, interactive;
+	FILE* input_stream;
+
+	cmdline_shift = 1;	
+	cmdline_argc = argc;
+	cmdline_argv = argv;
+
+	if (argc > 1) {
+		if((input_stream = fopen(argv[1], "r")) == NULL) {
+			perror("fopen");
+			exit(0);
+		}
+
+		interactive = 0;
+	}
+	else {
+		interactive = 1;
+		input_stream = stdin;
+	}
 
 	while (1) {
 
 		/* prompt and get line */
-		fprintf (stdout, "%% ");
-		if (fgets (buffer, LINELEN, stdin) == NULL)
+		if (interactive)
+			fprintf (stdout, "%% ");
+		if (fgets (buffer, LINELEN, input_stream) == NULL)
 			break;
 
 		/* Get rid of \n at end of buffer. */
@@ -40,7 +63,7 @@ int main (void)
 
 	}
 
-	if (!feof(stdin))
+	if (!feof(input_stream))
 		perror ("read");
 
 	return 0;		/* Also known as exit (0); */

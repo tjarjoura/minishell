@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#include "proto.h"
+
 struct builtin {
 	const char *cmd;
 	void (*cmd_cb)(int argc, char **argv);
@@ -16,16 +18,20 @@ static void aecho(int argc, char **argv);
 static void envset(int argc, char **argv);
 static void envunset(int argc, char **argv);
 static void cd(int argc, char **argv);
+static void shift(int argc, char **argv);
+static void unshift(int argc, char **argv);
 
 static struct builtin builtin_commands[] = {
 					    {.cmd = "exit", .cmd_cb  = shell_exit},
 					    {.cmd = "aecho", .cmd_cb = aecho},
 					    {.cmd = "envset", .cmd_cb = envset},
 					    {.cmd = "envunset", .cmd_cb = envunset},
-					    {.cmd = "cd", .cmd_cb = cd}
+					    {.cmd = "cd", .cmd_cb = cd},
+					    {.cmd = "shift", .cmd_cb = shift},
+					    {.cmd = "unshift", .cmd_cb = unshift}
 };
 
-static int n_builtin = 5;
+static int n_builtin = 7;
 
 int builtin(char *cmd, int argc, char **argv)
 {
@@ -115,4 +121,17 @@ static void cd(int argc, char **argv)
 		getcwd(cwd, 50);
 		setenv("PWD", cwd, 1);
 	}
+}
+
+static void shift(int argc, char **argv)
+{
+	cmdline_shift += atoi(argv[1]);
+}
+
+static void unshift(int argc, char **argv)
+{
+	cmdline_shift -= atoi(argv[1]);
+
+	if (cmdline_shift < 0)
+		cmdline_shift = 0;
 }
