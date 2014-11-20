@@ -5,6 +5,7 @@ A minishell written in C.
 * pass arguments to commands
 * environment variable expansion
 * current pid expansion
+* wildcard expansion
 * builtin commands
 * run pre-written scripts
 * pass arguments to scripts
@@ -25,3 +26,5 @@ A minishell written in C.
 	* shifts the arguments to a script left by n
 7. unshift <n>
 	* shifts the arguments to a script right by n
+8. sstat <file> [<file>...]
+    * prints information about the files given

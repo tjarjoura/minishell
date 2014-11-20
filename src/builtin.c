@@ -4,6 +4,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "proto.h"
 
@@ -20,6 +24,7 @@ static int envunset(int argc, char **argv);
 static int cd(int argc, char **argv);
 static int shift(int argc, char **argv);
 static int unshift(int argc, char **argv);
+static int sstat(int argc, char **argv);
 
 static struct builtin builtin_commands[] = {
 					    {.cmd = "exit", .cmd_cb  = shell_exit},
@@ -28,10 +33,11 @@ static struct builtin builtin_commands[] = {
 					    {.cmd = "envunset", .cmd_cb = envunset},
 					    {.cmd = "cd", .cmd_cb = cd},
 					    {.cmd = "shift", .cmd_cb = shift},
-					    {.cmd = "unshift", .cmd_cb = unshift}
+					    {.cmd = "unshift", .cmd_cb = unshift},
+                        {.cmd = "sstat", .cmd_cb = sstat}
 };
 
-static int n_builtin = 7;
+static int n_builtin = 8;
 
 int builtin(char *cmd, int argc, char **argv)
 {
@@ -157,4 +163,72 @@ static int unshift(int argc, char **argv)
 		cmdline_shift = 1;
 
 	return 0;
+}
+
+static void get_perm(mode_t mode, char *perm_string)
+{
+    if (S_ISREG(mode))
+        perm_string[0] = '-';
+    else if (S_ISDIR(mode))
+        perm_string[0] = 'd';
+    else if (S_ISCHR(mode))
+        perm_string[0] = 'c';
+    else if (S_ISBLK(mode))
+        perm_string[0] = 'b';
+    else if (S_ISLNK(mode))
+        perm_string[0] = 'l';
+
+    perm_string[1] = (S_IRUSR & mode) ? 'r' : '-';
+    perm_string[2] = (S_IWUSR & mode) ? 'w' : '-';
+    perm_string[3] = (S_IXUSR & mode) ? 'x' : '-';
+
+    perm_string[4] = (S_IRGRP & mode) ? 'r' : '-';
+    perm_string[5] = (S_IWGRP & mode) ? 'w' : '-';
+    perm_string[6] = (S_IXGRP & mode) ? 'x' : '-';
+
+    perm_string[7] = (S_IROTH & mode) ? 'r' : '-';
+    perm_string[8] = (S_IWOTH & mode) ? 'w' : '-';
+    perm_string[9] = (S_IXOTH & mode) ? 'x' : '-';
+
+    perm_string[10] = '\0';
+}
+
+static int sstat(int argc, char **argv)
+{
+    int i;
+    struct stat s;
+    struct passwd *p;
+    struct group *g;
+    char perm_string[11];
+    struct tm* ts;
+    time_t t = time(NULL);
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: sstat file [file...]\n");
+        return 1;
+    }
+    
+    for (i = 1; i < argc; i++) {
+        if (stat(argv[i], &s) < 0) {
+            perror("stat");
+            continue;
+        }
+        
+        if ((p = getpwuid(s.st_uid)) == NULL) {
+            perror("getpwuid");
+            continue;
+        }
+
+        if ((g = getgrgid(s.st_gid)) == NULL) {
+            perror("getgrgid");
+            continue;
+        }
+
+        get_perm(s.st_mode, perm_string);
+        ts = localtime(&t);
+        
+        printf("%s %s %s %s %d %d %s\n", argv[i], p->pw_name, g->gr_name, perm_string, (int) s.st_nlink, (int) s.st_size, asctime(ts));
+    }
+
+    return 0;
 }
