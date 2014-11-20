@@ -22,6 +22,8 @@ int cmdline_shift;
 int cmdline_argc;
 char **cmdline_argv;
 
+int prev_status;
+
 int main (int argc, char **argv)
 {
 	char buffer [LINELEN];
@@ -31,6 +33,7 @@ int main (int argc, char **argv)
 	cmdline_shift = 1;	
 	cmdline_argc = argc;
 	cmdline_argv = argv;
+	prev_status = 0;
 
 	if (argc > 1) {
 		if((input_stream = fopen(argv[1], "r")) == NULL) {
@@ -65,6 +68,7 @@ int main (int argc, char **argv)
 
 	if (!feof(input_stream))
 		perror ("read");
+    putchar('\n');
 
 	return 0;		/* Also known as exit (0); */
 }
@@ -72,8 +76,9 @@ int main (int argc, char **argv)
 void processline (char *line)
 {
 	pid_t cpid;
-	int status, argc, rv;
-	char **argv = NULL;
+	int argc, rv;
+	char **argv; /* # address 0x100 */
+	argv = NULL; 
 	char expanded_line[LINELEN];
 
 	if (expand(line, expanded_line, LINELEN) < 0) {
@@ -81,7 +86,7 @@ void processline (char *line)
 		return;
 	}
 	
-	if ((argc = argparse(expanded_line, &argv)) < 0) {
+	if ((argc = argparse(expanded_line, &argv)) < 0) { /* make another argv at 0x900 */
 		printf("Error.\n");
 		return;
 	}
@@ -94,6 +99,7 @@ void processline (char *line)
 	if (rv >= 0) {
 		if (argv)
 			free(argv);
+		prev_status = rv;
 		return;
 	}
 
@@ -115,6 +121,6 @@ void processline (char *line)
 	if (argv)
 		free(argv); 
 	/* Have the parent wait for child to complete */
-	if (wait (&status) < 0)
+	if (wait (&prev_status) < 0)
 		perror ("wait");
 }

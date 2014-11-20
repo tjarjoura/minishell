@@ -13,10 +13,12 @@ void processline(char *line);
 int argparse(char *line, char ***argvp);
 int builtin(char *cmd, int argc, char **argv);
 int expand(char *old, char *new, int newsize);
-char *get_arg(int idx);
-int get_argc();
+int is_match(char* str, char* ptrn);
 
 /* command line arguments */
 extern int    cmdline_shift;
 extern int    cmdline_argc;
 extern char **cmdline_argv;
+
+/* last command exit status */
+extern int prev_status;
