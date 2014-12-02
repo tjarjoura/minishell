@@ -39,13 +39,30 @@ static struct builtin builtin_commands[] = {
 
 static int n_builtin = 8;
 
-int builtin(char *cmd, int argc, char **argv)
+int builtin(char *cmd, int argc, char **argv, int infile, int outfile, int errfile)
 {
 	int i;
 
 	for (i = 0; i < n_builtin; i++) 
-		if (strcmp(cmd, builtin_commands[i].cmd) == 0) 
+		if (strcmp(cmd, builtin_commands[i].cmd) == 0) {
+            /* redirect standard files */
+            if (dup2(infile, STDIN_FILENO) < 0) {
+                perror("dup2");
+                return -1;
+            }
+            
+            if (dup2(outfile, STDOUT_FILENO) < 0) {
+                perror("dup2");
+                return -1;
+            }
+
+            if (dup2(errfile, STDERR_FILENO) < 0) {
+                perror("dup2");
+                return -1;
+            }
+
 			return builtin_commands[i].cmd_cb(argc, argv);
+        }
 
 	return -1;
 }
@@ -86,7 +103,7 @@ static int aecho(int argc, char **argv)
 static int envset(int argc, char **argv)
 {
 	if (argc < 3) {
-		fprintf(stderr, "Usage: %s <name> <value>\n", argv[0]);
+		dprintf(STDERR_FILENO, "Usage: %s <name> <value>\n", argv[0]);
 		return 1;
 	}
 
@@ -101,7 +118,7 @@ static int envset(int argc, char **argv)
 static int envunset(int argc, char **argv)
 {
 	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <name>\n", argv[0]);		
+		dprintf(STDERR_FILENO, "Usage: %s <name>\n", argv[0]);		
 		return 1;
 	}
 
@@ -119,7 +136,7 @@ static int cd(int argc, char **argv)
 	if (argc < 2) {
 		home_dir = getenv("HOME");
 		if (home_dir == NULL) {
-			fprintf(stderr, "Set HOME environment variable or give an argument.\n");
+			dprintf(STDERR_FILENO, "Set HOME environment variable or give an argument.\n");
 			return 1;
 		} else if (chdir(home_dir) < 0) {
 			perror("chdir");
@@ -201,10 +218,9 @@ static int sstat(int argc, char **argv)
     struct group *g;
     char perm_string[11];
     struct tm* ts;
-    time_t t = time(NULL);
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: sstat file [file...]\n");
+        dprintf(STDERR_FILENO, "Usage: sstat file [file...]\n");
         return 1;
     }
     
@@ -225,9 +241,9 @@ static int sstat(int argc, char **argv)
         }
 
         get_perm(s.st_mode, perm_string);
-        ts = localtime(&t);
+        ts = localtime(&s.st_mtime);
         
-        printf("%s %s %s %s %d %d %s\n", argv[i], p->pw_name, g->gr_name, perm_string, (int) s.st_nlink, (int) s.st_size, asctime(ts));
+        dprintf(STDOUT_FILENO, "%s %s %s %s %d %d %s", argv[i], p->pw_name, g->gr_name, perm_string, (int) s.st_nlink, (int) s.st_size, asctime(ts));
     }
 
     return 0;

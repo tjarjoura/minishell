@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <pwd.h>
+
 #include "proto.h"
 
 static int expand_env(char **oldp, char **newp, int space_left, int brace_flag)
@@ -182,6 +184,38 @@ static int expand_wildcard(char **oldp, char **newp, int space_left)
     return n;
 }
 
+static int expand_home(char **oldp, char **newp, int space_left)
+{
+    char username[20];
+    char *old = *oldp;
+    char *new = *newp;
+    struct passwd *p;
+    int i = 0, n = 0; 
+
+    if (++*old == '/')
+        p = getpwuid(getuid());
+    else {
+        while ((*old != '/') || (*old != '\0') || (!isspace(*old)))
+            username[i++] = *old++;
+        username[i] = '\0';
+        
+        p = getpwnam(username);
+    }
+
+    *new++ = '~';
+    if (p != NULL) {
+        n = strlen(p->pw_dir) + 1;
+        if (n > space_left)
+            return ENOROOM;
+        while (*(p->pw_dir) != '\0')
+            *new++ = *(p->pw_dir)++;
+    }
+
+    *oldp = old;
+    *newp = new;
+    return n;
+}
+
 int expand(char *old, char *new, int newsize)
 {
     int dollar_flag = 0;
@@ -229,7 +263,14 @@ int expand(char *old, char *new, int newsize)
 
                 if ((rv = expand_wildcard(&old, &new, newsize - i)) > 0)
                     i += rv;
-            } else {
+            } else if (*old == '~') {
+                if ((rv = expand_home(&old, &new, newsize - i)) > 0)
+                    i += rv;
+            
+            } else if (*old == '#') /* if we reach a comment we can ignore the rest of the line */
+                break;
+
+            else {
                 *new++ = *old;
                 i++;
             }

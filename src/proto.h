@@ -11,7 +11,7 @@
 /* Prototypes */
 void processline(char *line);
 int argparse(char *line, char ***argvp);
-int builtin(char *cmd, int argc, char **argv);
+int builtin(char *cmd, int argc, char **argv, int infile, int outfile, int errfile);
 int expand(char *old, char *new, int newsize);
 int is_match(char* str, char* ptrn);
 

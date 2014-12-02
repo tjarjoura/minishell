@@ -1,0 +1,3 @@
+# this is a comment
+echo "don't execute comments" # this is another comment
+ls #comment

@@ -1,0 +1,13 @@
+1. search the line for the following chracters: '|', '>', '<'
+2. for each '|' found:
+    -:t
+    -open a pipe file
+    -fork an extra child 
+    -divide string into suitable command strings 
+3. if its a builtin we have to direct stdin and stdout back to normal 
+4. basically each time we can check for some things:
+    a) if there was a pipe then we set STDIN_FILENO to pipes[1]
+    b) if there is another command(ie. there is a pipe) then we set STDOUT_FILENO to pipes[0] AFTER CALLING PIPE() AGAIN    
+    c) if there is a '>'/'2>' then we can check the next arg, open/create that filename, and dup STDOUT_FILENO/STDERR_FILENO to it
+    d) if there is a '<' then we can check the next arg and attempt to open that filename. if it works dup STDIN_FILENO to it, if not then error and return from processline
+    e) otherwise dup STDIN_FILENO to orig_stdin  
