@@ -1,0 +1,17 @@
+a.out
+argparse.c
+argparse.o
+builtin.c
+builtin.o
+expand.c
+expand.o
+Makefile
+msh
+msh.c
+msh.o
+outfile
+plan.txt
+proto.h
+testinput
+wildcard.c
+wildcard.o

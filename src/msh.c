@@ -109,8 +109,13 @@ static int pipes(char *line, char ***commands)
     return commandc;
 }
 
+static void print_args(char **argv) {
+    int i;
+    for (i = 0; argv[i] != NULL; i++)
+       printf("%s\n", argv[i]); 
+}
 
-static int redirect(char **argv, int *infile, int *outfile, int *errfile)
+static int redirect(int *argc, char **argv, int *infile, int *outfile, int *errfile)
 {
     int i, fd;
 
@@ -124,6 +129,9 @@ static int redirect(char **argv, int *infile, int *outfile, int *errfile)
             }
             
             *outfile = fd;
+            memmove(argv + i, argv + (i + 2), sizeof(char *) * ((*argc) - (i + 2)));
+            *argc -= 2;
+            print_args(argv);
 
         } else if (strncmp("<", argv[i], 2) == 0) {
             if ((fd = open(argv[i+1], O_RDONLY)) < 0) {
@@ -151,11 +159,13 @@ static int redirect(char **argv, int *infile, int *outfile, int *errfile)
 void processline(char *line)
 {
 	pid_t cpid;
-	int argc, commandc, rv, i, pipe_open;
+	int argc, commandc, rv, i, pipe_open = 0;
 	int pipe_fds[2];
     char **commands;
     char **argv = NULL;; 
 	char expanded_line[LINELEN];
+    
+    printf("STDIN_FILENO: %d, STDOUT_FILENO: %d, STDERR_FILENO: %d\n", STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO);
 
     /* get copies of stdin, stdout, and stderr file descriptors */
     const int stdin_orig = dup(STDIN_FILENO);
@@ -174,7 +184,6 @@ void processline(char *line)
     }
     
     for (i = 0; i < commandc; i++) {
-        printf("Processing %s\n", commands[i]);
         if (infile != stdin_orig) {
             close(infile);
             infile = stdin_orig;
@@ -209,7 +218,7 @@ void processline(char *line)
 	    } else if (argc == 0) /* empty line */
 		    continue;
 
-        if (redirect(argv, &infile, &outfile, &errfile) < 0)
+        if (redirect(&argc, argv, &infile, &outfile, &errfile) < 0)
             return;
 
         if ((rv = builtin(argv[0], argc, argv, infile, outfile, errfile)) >= 0) {
@@ -222,8 +231,9 @@ void processline(char *line)
             perror ("fork");
             return;
         }
-        
+       
         if (cpid == 0) {
+            printf("infile = %d, outfile = %d, errfile = %d\n", infile, outfile, errfile);
             if (dup2(infile, STDIN_FILENO) < 0) {
                 perror("stdin dup2");
                 return;
@@ -251,4 +261,8 @@ void processline(char *line)
     /* Have the parent wait for child to complete */
 	if (wait (&prev_status) < 0)
 		perror ("wait");
+
+    close(stdin_orig);
+    close(stdout_orig);
+    close(stderr_orig);
 }
